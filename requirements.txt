@@ -2,3 +2,7 @@ textblob
 fastapi
 uvicorn
 flask
+Flask
+numpy
+scipy
+matplotlib
