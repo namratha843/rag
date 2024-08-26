@@ -18,7 +18,7 @@ client = Groq(api_key=GROQ_API_KEY)
 # Initialize Sentence Transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-csv_file_path = "kpi.csv"  # Path to your CSV file
+csv_file_path = "kpis.csv"  # Path to your CSV file
 csv_loader = CSVLoader(file_path=csv_file_path)
 documents = csv_loader.load()
 print(f"Number of documents loaded from CSV: {len(documents)}")
@@ -28,18 +28,21 @@ split_documents = text_splitter.split_documents(documents)
 # Generate embeddings for the CSV data
 embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
-# vectorstore = Chroma.from_documents(
-#     documents=split_documents, 
-#     embedding=embedding_function, 
-#     persist_directory="embeddings"
-# )
-# vectorstore.persist()
-
-# Initialize Chroma vectorstore with embeddings
-vectorstore = Chroma(
-    persist_directory="embeddings",
-    embedding_function=embedding_function
-)
+# Check if the embeddings folder exists and is not empty
+if os.path.exists("embeddings") and os.listdir("embeddings"):
+    # If the folder exists and is not empty, load the vectorstore from the embeddings
+    vectorstore = Chroma(
+        persist_directory="embeddings",
+        embedding_function=embedding_function
+    )
+else:
+    # If the folder is empty or does not exist, create a new vectorstore
+    vectorstore = Chroma.from_documents(
+        documents=split_documents, 
+        embedding=embedding_function, 
+        persist_directory="embeddings"
+    )
+    vectorstore.persist()
 print(f"Number of documents in vectorstore: {vectorstore._collection.count()}")
 # SQL Database connection details
 db_config = {
@@ -52,7 +55,7 @@ db_config = {
 
 # Function to execute the SQL query and retrieve the row from the SQL database
 def execute_sql_query(query):
-
+    query = query.strip() 
     connection = mysql.connector.connect(**db_config)
     try:
         cursor = connection.cursor(dictionary=True)
@@ -139,7 +142,7 @@ async def retrieve(query: str) -> list:
     print(query)
     print(f"Number of documents in vectorstore: {vectorstore._collection.count()}")
     # Perform similarity search in the vector store
-    results = vectorstore.similarity_search(query, k=5)
+    results = vectorstore.similarity_search(query, k=10)
     print(results)
     # Extract the combined descriptions from the results
     contexts = [result.page_content for result in results]
